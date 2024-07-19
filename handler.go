@@ -1,8 +1,14 @@
 package urlshort
 
 import (
+	"gopkg.in/yaml.v3"
 	"net/http"
 )
+
+type PathShortConfig struct {
+	Path string `yaml:"path"`
+	URL  string `yaml:"url"`
+}
 
 // MapHandler will return an http.HandlerFunc (which also
 // implements http.Handler) that will attempt to map any
@@ -11,8 +17,35 @@ import (
 // If the path is not provided in the map, then the fallback
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
-	//	TODO: Implement this...
-	return nil
+	return func(writer http.ResponseWriter, request *http.Request) {
+		path := request.URL.Path
+		url, ok := pathsToUrls[path]
+
+		if ok {
+			http.Redirect(writer, request, url, http.StatusFound)
+			return
+		}
+
+		fallback.ServeHTTP(writer, request)
+	}
+}
+
+func parseYAML(yamlInput []byte) ([]PathShortConfig, error) {
+	var pathList []PathShortConfig
+	err := yaml.Unmarshal(yamlInput, &pathList)
+	return pathList, err
+}
+
+func buildMap(list []PathShortConfig) map[string]string {
+	pathMapping := make(map[string]string) // Initialise the map
+
+	for _, pathMap := range list {
+		path := pathMap.Path
+		url := pathMap.URL
+		pathMapping[path] = url
+	}
+
+	return pathMapping
 }
 
 // YAMLHandler will parse the provided YAML and then return
@@ -23,8 +56,8 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 //
 // YAML is expected to be in the format:
 //
-//     - path: /some-path
-//       url: https://www.some-url.com/demo
+//   - path: /some-path
+//     url: https://www.some-url.com/demo
 //
 // The only errors that can be returned all related to having
 // invalid YAML data.
@@ -32,6 +65,10 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	// TODO: Implement this...
-	return nil, nil
+	parsedYaml, err := parseYAML(yml)
+	if err != nil {
+		return nil, err
+	}
+	pathMap := buildMap(parsedYaml)
+	return MapHandler(pathMap, fallback), nil
 }

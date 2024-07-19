@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"github.com/jorwong/urlshort"
+	"log"
 	"net/http"
-
-	"github.com/gophercises/urlshort"
 )
 
 func main() {
@@ -30,7 +30,10 @@ func main() {
 		panic(err)
 	}
 	fmt.Println("Starting the server on :8080")
-	http.ListenAndServe(":8080", yamlHandler)
+	err = http.ListenAndServe(":8080", yamlHandler)
+	if err != nil {
+		log.Fatalf("Failed to start server: %v", err)
+	}
 }
 
 func defaultMux() *http.ServeMux {
